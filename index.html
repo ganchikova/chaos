@@ -1,0 +1,107 @@
+<html>
+<body><canvas></canvas></body>
+<script>
+  document.body.style = 'background-color: #ebf8ff; margin: 0; padding: 0;'
+  const canvas = document.getElementsByTagName('canvas')[0];
+  const [w, h] = [document.body.clientWidth, document.body.clientHeight];
+  canvas.width = w;
+  canvas.height = h;
+  /** @type {CanvasRenderingContext2D} */
+  const c = canvas.getContext('2d', { alpha:false });
+
+  function random(a = 1, b) {
+    const [min, max] = b !== undefined ? [a, b] : [0, a];
+    return min + (Math.random() * (max - min));
+  }
+
+  const po = w < h ? w*0.1 : h*0.1;  // padding outside of the screen
+  function randomOutsidePos() {
+    const mode = random();
+    // top
+    if (mode > 0.75) {
+      return [random(-po, w+po), -po];
+    }
+    // right
+    if (mode > 0.5) {
+      return [-po, random(-po, h+po)];
+    }
+    // bottom
+    if (mode > 0.25) {
+      return [random(-po, w+po), h+po];
+    }
+    // left
+    if (mode >= 0) {
+      return [-po, random(-po, h+po)];
+    }
+  }
+  const pi = w < h ? w*0.1 : h*0.1;
+  function randomVector(x, y) {
+    const [dx, dy] = [random(pi, w-pi), random(pi, h-pi)];
+    const [vx, vy] = [dx-x, dy-y];
+    // vector normalization
+    const mag = Math.sqrt(vx*vx + vy*vy);
+    return { x: vx/mag, y: vy/mag };
+  }
+  function isOutsideTheScreen(word) {
+    if (word.x < -po || word.y < -po) return true;
+    if (word.x > w+po) return true;
+    if (word.y > h+po) return true;
+    return false; 
+  }
+
+  function newWord(text) {
+    const [x, y] = randomOutsidePos();
+    const size = Math.ceil(random(20, 40));
+    const vector = randomVector(x, y);
+    const rotation = random(0, 2*Math.PI);
+    const speed = random(50, 120)
+    return { text, x, y, vector, rotation, size, speed, active: false, color: '#000' };
+  }
+  function moveWord(dt, word) {
+    word.x += (word.vector.x * word.speed * dt / 1000);
+    word.y += (word.vector.y * word.speed * dt / 1000);
+  }
+  function reinitWord(word) {
+    const [x, y] = randomOutsidePos();
+    word.x = x;
+    word.y = y;
+    word.vector = randomVector(x, y);
+  }
+  function drawWord(word) {
+    c.save();
+    c.translate(word.x, word.y);
+    c.rotate(word.rotation);
+    c.font = `${word.size}px serif`;
+    c.fillText(word.text, 0, 0);
+    c.restore();
+  }
+
+  function gameLoop(dt) {
+    for (let w of words) {
+      if (isOutsideTheScreen(w)) {
+        reinitWord(w);
+      } else {
+        moveWord(dt, w);
+        drawWord(w);
+      }
+    }
+  }
+
+  function runWorld() {
+    let prevT;
+    window.requestAnimationFrame(engineLoop);
+    function engineLoop(t) {
+      if (!prevT) prevT = t;
+      c.save();
+      c.clearRect(0, 0, w, h);
+      gameLoop(t - prevT);
+      c.restore();
+      prevT = t;
+      window.requestAnimationFrame(engineLoop);
+    }
+  }
+  
+  let words = Array(50).fill(null).map(() => newWord('test'));
+  runWorld();
+</script>
+</html>
