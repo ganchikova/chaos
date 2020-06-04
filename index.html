@@ -1,20 +1,51 @@
 <html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
 <body><canvas></canvas></body>
 <script>
-  document.body.style = 'background-color: #ebf8ff; margin: 0; padding: 0;'
+  document.body.style = 'background-color: #ebf8ff; margin: 0; padding: 0; touch-action: none;'
   const canvas = document.getElementsByTagName('canvas')[0];
+  // Enforce CSS pixels
+  const scale = window.devicePixelRatio || 1;
   const [w, h] = [document.body.clientWidth, document.body.clientHeight];
-  canvas.width = w;
-  canvas.height = h;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width = Math.floor(w * scale);
+  canvas.height = Math.floor(h * scale);
   /** @type {CanvasRenderingContext2D} */
   const c = canvas.getContext('2d', { alpha:false });
+  c.scale(scale, scale);
+
+  function hsl(hsla) {
+    let [h, s, l, a = 1] = hsla;
+    h = h % 360;
+    let c = (1 - Math.abs(2*l - 1)) * s;
+    let x = c * (1 - Math.abs((h/60)%2 - 1));
+    let m = l - c/2;
+    let [r_, g_, b_] = [0, 0, 0];
+    if (h >= 0 && h < 60) {
+      [r_, g_, b_] = [c, x, 0];
+    } else if (h >= 60 && h < 120) {
+      [r_, g_, b_] = [x, c, 0];
+    } else if (h >= 120 && h < 180) {
+      [r_, g_, b_] = [0, c, x];
+    } else if (h >= 180 && h < 240) {
+      [r_, g_, b_] = [0, x, c];
+    } else if (h >= 240 && h < 300) {
+      [r_, g_, b_] = [x, 0, c];
+    } else if (h >= 300 && h < 360) {
+      [r_, g_, b_] = [c, 0, x];
+    }
+    return `rgba(${(r_+m)*255}, ${(g_+m)*255}, ${(b_+m)*255}, ${a})`;
+  }
 
   function random(a = 1, b) {
     const [min, max] = b !== undefined ? [a, b] : [0, a];
     return min + (Math.random() * (max - min));
   }
 
-  const po = w < h ? w*0.1 : h*0.1;  // padding outside of the screen
+  const po = w < h ? w*0.5 : h*0.5;  // padding outside of the screen
   function randomOutsidePos() {
     const mode = random();
     // top
@@ -34,7 +65,7 @@
       return [-po, random(-po, h+po)];
     }
   }
-  const pi = w < h ? w*0.1 : h*0.1;
+  const pi = w < h ? w*0.1 : h*0.1;  // padding inside the screen
   function randomVector(x, y) {
     const [dx, dy] = [random(pi, w-pi), random(pi, h-pi)];
     const [vx, vy] = [dx-x, dy-y];
@@ -42,7 +73,7 @@
     const mag = Math.sqrt(vx*vx + vy*vy);
     return { x: vx/mag, y: vy/mag };
   }
-  function isOutsideTheScreen(word) {
+  function isOutsideOfTheScreen(word) {
     if (word.x < -po || word.y < -po) return true;
     if (word.x > w+po) return true;
     if (word.y > h+po) return true;
@@ -51,11 +82,14 @@
 
   function newWord(text) {
     const [x, y] = randomOutsidePos();
-    const size = Math.ceil(random(20, 40));
+    const height = Math.ceil(random(20, 45));
+    const font = `${height}px serif`;
     const vector = randomVector(x, y);
     const rotation = random(0, 2*Math.PI);
-    const speed = random(50, 120)
-    return { text, x, y, vector, rotation, size, speed, active: false, color: '#000' };
+    const speed = Math.floor(random(50, 300));
+    const hue = Math.ceil(random(360));
+
+    return { text, x, y, vector, rotation, font, speed, active: false, color: hsl([hue, 0.68, 0.42]) };
   }
   function moveWord(dt, word) {
     word.x += (word.vector.x * word.speed * dt / 1000);
@@ -71,14 +105,15 @@
     c.save();
     c.translate(word.x, word.y);
     c.rotate(word.rotation);
-    c.font = `${word.size}px serif`;
+    c.font = word.font;
+    c.fillStyle = word.color;
     c.fillText(word.text, 0, 0);
     c.restore();
   }
 
   function gameLoop(dt) {
     for (let w of words) {
-      if (isOutsideTheScreen(w)) {
+      if (isOutsideOfTheScreen(w)) {
         reinitWord(w);
       } else {
         moveWord(dt, w);
@@ -101,7 +136,13 @@
     }
   }
   
-  let words = Array(50).fill(null).map(() => newWord('test'));
+  const termins = [
+    'art', 'science', 'noise', 'information', 'answer', 'question', 'dualistic', 'society',
+    'human', 'computer', 'interaction', 'gadgets', 'memex', 'sketchpad', 'alto', 'xerox',
+    'apple', 'online', 'connection', 'internet', 'hypertext', 'structure', 'mess', 'flow',
+    'time', 'life',
+  ];
+  let words = [...termins, ...termins].map(t => newWord(t));
   runWorld();
 </script>
 </html>
